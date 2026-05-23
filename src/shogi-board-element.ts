@@ -12,12 +12,11 @@ const DEFAULT_AUTOPLAY_MS = 1000;
  *  - kif:      SFEN 局面 または USI 指し手列（必須）
  *  - teban:    "sente" | "gote"（盤の向き。既定 sente）
  *  - ply:      初期表示手数。-1 で最終局面（既定 0）
- *  - slider:   属性が在ればスライダーを表示
- *  - autoplay: 属性が在れば自動再生（値があれば間隔 ms、既定 1000）
+ *  - slider:   属性が在れば再生ボタン・スライダー・手数カウンターを表示
  */
 export class ShogiBoardElement extends HTMLElement {
   static get observedAttributes(): string[] {
-    return ["kif", "teban", "ply", "slider", "autoplay"];
+    return ["kif", "teban", "ply", "slider"];
   }
 
   private shadow: ShadowRoot;
@@ -46,7 +45,7 @@ export class ShogiBoardElement extends HTMLElement {
     switch (name) {
       case "kif":
       case "slider":
-        // 入力や構造が変わるので作り直す。
+        // 入力や構造（操作行の有無）が変わるので作り直す。
         this.rebuild();
         break;
       case "teban":
@@ -54,9 +53,6 @@ export class ShogiBoardElement extends HTMLElement {
         break;
       case "ply":
         this.seek(this.initialPly());
-        break;
-      case "autoplay":
-        this.restartAutoplay();
         break;
     }
   }
@@ -72,13 +68,6 @@ export class ShogiBoardElement extends HTMLElement {
     if (raw === null) return 0;
     const n = Number(raw);
     return Number.isFinite(n) ? n : 0;
-  }
-
-  private autoplayInterval(): number | null {
-    if (!this.hasAttribute("autoplay")) return null;
-    const raw = this.getAttribute("autoplay");
-    const n = raw ? Number(raw) : NaN;
-    return Number.isFinite(n) && n > 0 ? n : DEFAULT_AUTOPLAY_MS;
   }
 
   // --- 構築・描画 ---
@@ -103,17 +92,19 @@ export class ShogiBoardElement extends HTMLElement {
         onNext: () => this.seek(this.currentPly + 1),
         onRotate: () => this.toggleViewpoint(),
         onSeek: (ply) => this.seek(ply),
+        onTogglePlay: () => this.togglePlay(),
       },
-      { viewpoint: this.viewpoint(), showSlider: this.hasAttribute("slider") },
+      {
+        viewpoint: this.viewpoint(),
+        showSlider: this.hasAttribute("slider"),
+      },
     );
     this.shadow.append(this.view.styleEl, this.view.root);
 
-    // 初期手数を反映してから描画。
+    // 初期手数を反映してから描画。自動再生は再生ボタンが押されるまで開始しない。
     const state = readState(this.record, this.initialPly());
     this.currentPly = state.ply;
     this.view.update(state);
-
-    this.restartAutoplay();
   }
 
   private renderError(message: string): void {
@@ -126,7 +117,7 @@ export class ShogiBoardElement extends HTMLElement {
     this.shadow.append(style, div);
   }
 
-  /** 手数を移動して再描画（範囲外はクランプ。autoplay 中の手動操作は停止）。 */
+  /** 手数を移動して再描画（範囲外はクランプ）。 */
   private seek(ply: number): void {
     if (!this.record || !this.view) return;
     const state = readState(this.record, ply);
@@ -142,18 +133,27 @@ export class ShogiBoardElement extends HTMLElement {
     this.view?.setViewpoint(next);
   }
 
-  // --- 自動再生 ---
+  // --- 自動再生（再生ボタンで開始・停止） ---
 
-  private restartAutoplay(): void {
-    this.stopAutoplay();
-    const interval = this.autoplayInterval();
-    if (interval === null || !this.record) return;
+  /** 再生ボタンのトグル。停止中なら再生開始、再生中なら停止。 */
+  private togglePlay(): void {
+    if (this.autoplayTimer !== null) {
+      this.stopAutoplay();
+      return;
+    }
+    if (!this.record) return;
+    const interval = DEFAULT_AUTOPLAY_MS;
+    // 最終手で押されたら先頭から再生し直す。
+    if (this.currentPly >= this.record.length) this.seek(0);
+    this.view?.setPlaying(true);
     this.autoplayTimer = setInterval(() => {
       if (!this.record) return;
-      // 最終手まで進んだら先頭に戻して繰り返す。
-      const nextPly =
-        this.currentPly >= this.record.length ? 0 : this.currentPly + 1;
-      this.seek(nextPly);
+      // 最終手に達したら停止する。
+      if (this.currentPly >= this.record.length) {
+        this.stopAutoplay();
+        return;
+      }
+      this.seek(this.currentPly + 1);
     }, interval);
   }
 
@@ -162,5 +162,6 @@ export class ShogiBoardElement extends HTMLElement {
       clearInterval(this.autoplayTimer);
       this.autoplayTimer = null;
     }
+    this.view?.setPlaying(false);
   }
 }

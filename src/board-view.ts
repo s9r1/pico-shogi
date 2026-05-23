@@ -1,6 +1,6 @@
 import { Color } from "tsshogi";
 import type { BoardState, HandCount, Viewpoint } from "./types";
-import { HAND_ORDER, pieceChar } from "./piece-char";
+import { HAND_ORDER, isPromoted, pieceChar } from "./piece-char";
 import { STYLE } from "./styles";
 
 /** 盤面操作のコールバック。 */
@@ -9,16 +9,22 @@ export interface BoardViewCallbacks {
   onPrev(): void;
   /** 盤の右半分クリック（1手進む）。 */
   onNext(): void;
-  /** ▲/▽ マーカークリック（視点反転）。 */
+  /** ▲/△ マーカークリック（視点反転）。 */
   onRotate(): void;
   /** スライダー操作（手数指定）。 */
   onSeek(ply: number): void;
+  /** 再生 / 一時停止ボタンのクリック。 */
+  onTogglePlay(): void;
 }
 
 export interface BoardViewOptions {
   viewpoint: Viewpoint;
+  /** スライダー（再生ボタン・手数カウンター込み）を表示するか。 */
   showSlider: boolean;
 }
+
+/** 段の漢数字（1 段目→9 段目）。 */
+const RANK_KANJI = ["一", "二", "三", "四", "五", "六", "七", "八", "九"];
 
 /**
  * 盤・持ち駒・手番マーカー・スライダーを描画する。
@@ -33,7 +39,13 @@ export class BoardView {
   private readonly rightMarker: HTMLElement;
   private readonly leftHand: HTMLElement;
   private readonly rightHand: HTMLElement;
+  private readonly fileLabels: HTMLElement[] = [];
+  private readonly rankLabels: HTMLElement[] = [];
   private slider: HTMLInputElement | null = null;
+  private counter: HTMLElement | null = null;
+  private counterCur: HTMLElement | null = null;
+  private counterMax: HTMLElement | null = null;
+  private playBtn: HTMLButtonElement | null = null;
   private viewpoint: Viewpoint;
   private lastState: BoardState | null = null;
 
@@ -61,9 +73,28 @@ export class BoardView {
     this.leftHand.className = "ps-hand";
     this.leftSide.append(this.leftMarker, this.leftHand);
 
-    // --- 盤本体 ---
-    const boardWrap = doc.createElement("div");
-    boardWrap.className = "ps-board-wrap";
+    // --- 盤本体（座標つき小グリッド: 上=筋・右=段） ---
+    const boardArea = doc.createElement("div");
+    boardArea.className = "ps-board-area";
+
+    const files = doc.createElement("div");
+    files.className = "ps-files";
+    for (let i = 0; i < 9; i++) {
+      const span = doc.createElement("span");
+      files.appendChild(span);
+      this.fileLabels.push(span);
+    }
+
+    const ranks = doc.createElement("div");
+    ranks.className = "ps-ranks";
+    for (let i = 0; i < 9; i++) {
+      const span = doc.createElement("span");
+      ranks.appendChild(span);
+      this.rankLabels.push(span);
+    }
+
+    const boardInner = doc.createElement("div");
+    boardInner.className = "ps-board-inner";
     const board = doc.createElement("div");
     board.className = "ps-board";
     for (let i = 0; i < 81; i++) {
@@ -81,7 +112,9 @@ export class BoardView {
     const next = doc.createElement("div");
     next.className = "ps-click ps-click-next";
     next.addEventListener("click", () => this.cb.onNext());
-    boardWrap.append(board, prev, next);
+    boardInner.append(board, prev, next);
+
+    boardArea.append(files, ranks, boardInner);
 
     // --- 右カラム（盤の手前側プレイヤー）: 持ち駒上・マーカー下 ---
     this.rightSide = doc.createElement("div");
@@ -91,10 +124,21 @@ export class BoardView {
     this.rightHand.className = "ps-hand";
     this.rightSide.append(this.rightHand, this.rightMarker);
 
-    main.append(this.leftSide, boardWrap, this.rightSide);
+    main.append(this.leftSide, boardArea, this.rightSide);
     this.root.appendChild(main);
 
+    // --- 操作行（再生ボタン → スライダー → 手数カウンター） ---
     if (opts.showSlider) {
+      const controls = doc.createElement("div");
+      controls.className = "ps-controls";
+
+      this.playBtn = doc.createElement("button");
+      this.playBtn.type = "button";
+      this.playBtn.className = "ps-play";
+      this.playBtn.addEventListener("click", () => this.cb.onTogglePlay());
+      controls.appendChild(this.playBtn);
+      this.setPlaying(false);
+
       this.slider = doc.createElement("input");
       this.slider.type = "range";
       this.slider.className = "ps-slider";
@@ -103,7 +147,20 @@ export class BoardView {
       this.slider.addEventListener("input", () => {
         if (this.slider) this.cb.onSeek(Number(this.slider.value));
       });
-      this.root.appendChild(this.slider);
+      controls.appendChild(this.slider);
+
+      this.counter = doc.createElement("div");
+      this.counter.className = "ps-counter";
+      this.counterCur = doc.createElement("span");
+      this.counterCur.className = "ps-counter-cur";
+      this.counterMax = doc.createElement("span");
+      const unit = doc.createElement("span");
+      unit.className = "ps-counter-unit";
+      unit.textContent = "手目";
+      this.counter.append(this.counterCur, this.counterMax, unit);
+      controls.appendChild(this.counter);
+
+      this.root.appendChild(controls);
     }
 
     // style は root の前に置いて Shadow DOM へまとめて attach できるようにする
@@ -126,6 +183,26 @@ export class BoardView {
     if (this.lastState) this.update(this.lastState);
   }
 
+  /** 再生ボタンの表示（▶ / ❚❚）を切り替える。 */
+  setPlaying(playing: boolean): void {
+    if (!this.playBtn) return;
+    this.playBtn.textContent = playing ? "❚❚" : "▶";
+    this.playBtn.setAttribute("aria-label", playing ? "一時停止" : "再生");
+  }
+
+  /** 座標ラベル（上=筋・右=段）を視点に応じて描画する。 */
+  private renderCoords(): void {
+    const senteView = this.viewpoint === "sente";
+    for (let i = 0; i < 9; i++) {
+      // 先手視点は左から 9..1、後手視点は 1..9。
+      this.fileLabels[i].textContent = String(senteView ? 9 - i : i + 1);
+      // 先手視点は上から 一..九、後手視点は 九..一。
+      this.rankLabels[i].textContent = senteView
+        ? RANK_KANJI[i]
+        : RANK_KANJI[8 - i];
+    }
+  }
+
   /** 盤面・持ち駒・マーカー・スライダーを最新状態に更新する。 */
   update(state: BoardState): void {
     this.lastState = state;
@@ -143,25 +220,38 @@ export class BoardView {
       if (cell) {
         pieceEl.textContent = pieceChar(cell.type);
         pieceEl.classList.toggle("is-flipped", cell.color !== bottomColor);
+        pieceEl.classList.toggle("is-promoted", isPromoted(cell.type));
       } else {
         pieceEl.textContent = "";
         pieceEl.classList.remove("is-flipped");
+        pieceEl.classList.remove("is-promoted");
       }
       cellEl.classList.toggle("is-last", state.lastTo === sqIndex);
     }
 
-    // マーカー（▲=先手 / ▽=後手、現在手番を強調）
-    this.renderMarker(this.rightMarker, bottomColor, state.turn);
-    this.renderMarker(this.leftMarker, topColor, state.turn);
+    // マーカー（▲=先手 / △=後手）
+    this.renderMarker(this.rightMarker, bottomColor);
+    this.renderMarker(this.leftMarker, topColor);
 
     // 持ち駒（右=手前側プレイヤー、左=向こう側プレイヤー）
     this.renderHand(this.rightHand, this.handOf(state, bottomColor));
     this.renderHand(this.leftHand, this.handOf(state, topColor));
 
-    // スライダー
+    // 座標ラベル
+    this.renderCoords();
+
+    // スライダー（トラックの塗り分け --p も更新）
     if (this.slider) {
       this.slider.max = String(state.maxPly);
       this.slider.value = String(state.ply);
+      const pct = state.maxPly > 0 ? (state.ply / state.maxPly) * 100 : 0;
+      this.slider.style.setProperty("--p", `${pct}%`);
+    }
+
+    // 手数カウンター
+    if (this.counterCur && this.counterMax) {
+      this.counterCur.textContent = String(state.ply);
+      this.counterMax.textContent = ` / ${state.maxPly}`;
     }
   }
 
@@ -169,9 +259,8 @@ export class BoardView {
     return color === Color.BLACK ? state.blackHand : state.whiteHand;
   }
 
-  private renderMarker(el: HTMLElement, color: Color, turn: Color): void {
-    el.textContent = color === Color.BLACK ? "▲" : "▽";
-    el.classList.toggle("is-turn", color === turn);
+  private renderMarker(el: HTMLElement, color: Color): void {
+    el.textContent = color === Color.BLACK ? "▲" : "△";
   }
 
   private renderHand(container: HTMLElement, hand: HandCount[]): void {

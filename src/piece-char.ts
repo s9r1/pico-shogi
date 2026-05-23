@@ -26,6 +26,21 @@ export function pieceChar(type: PieceType): string {
   return PIECE_CHAR[type] ?? "";
 }
 
+/** 成り駒（と・杏・圭・全・馬・龍）の集合。 */
+const PROMOTED = new Set<PieceType>([
+  PieceType.PROM_PAWN,
+  PieceType.PROM_LANCE,
+  PieceType.PROM_KNIGHT,
+  PieceType.PROM_SILVER,
+  PieceType.HORSE,
+  PieceType.DRAGON,
+]);
+
+/** 成り駒かどうか。 */
+export function isPromoted(type: PieceType): boolean {
+  return PROMOTED.has(type);
+}
+
 /** 持ち駒の表示順（飛・角・金・銀・桂・香・歩）。 */
 export const HAND_ORDER: PieceType[] = [
   PieceType.ROOK,
