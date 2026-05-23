@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>pico-shogi デモ</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        max-width: 720px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        line-height: 1.7;
+      }
+      section {
+        margin-bottom: 2.5rem;
+      }
+      code {
+        background: #f0f0f0;
+        padding: 0 4px;
+        border-radius: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>pico-shogi デモ</h1>
+    <p>
+      <code>&lt;shogi-board&gt;</code> に <code>kif</code> 属性で SFEN 局面か USI
+      指し手列を渡すだけ。盤の左右クリックで1手進む/戻る、▲▽クリックで盤反転。
+    </p>
+
+    <section>
+      <h2>SFEN 局面（初期局面）</h2>
+      <shogi-board
+        kif="lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"
+      ></shogi-board>
+    </section>
+
+    <section>
+      <h2>USI 棋譜・最終局面表示・スライダーあり</h2>
+      <shogi-board
+        kif="startpos moves 7g7f 3c3d 2g2f 8c8d 2f2e 8d8e 2e2d 2c2d 2h2d"
+        ply="-1"
+        slider
+      ></shogi-board>
+    </section>
+
+    <section>
+      <h2>後手視点・途中局面（4手目）</h2>
+      <shogi-board
+        kif="startpos moves 7g7f 3c3d 8h2b+ 3a2b"
+        teban="gote"
+        ply="4"
+        slider
+      ></shogi-board>
+    </section>
+
+    <section>
+      <h2>自動再生（1.2秒間隔）</h2>
+      <shogi-board
+        kif="startpos moves 7g7f 8c8d 2g2f 8d8e 7i6h 4a3b 2f2e 8e8f 8g8f 8b8f"
+        autoplay="1200"
+        slider
+      ></shogi-board>
+    </section>
+
+    <section>
+      <h2>不正な入力（エラー表示）</h2>
+      <shogi-board kif="これは将棋ではありません"></shogi-board>
+    </section>
+
+    <!--
+      ビルド済みの単一バンドルを読み込む（本番の使い方と同じ）。
+      事前に `pnpm build` を実行しておくこと。これなら file:// で直接開いても動く。
+      ソースを編集しながら確認したい場合は `pnpm dev` を使う（Vite が .ts を変換する）。
+    -->
+    <script src="./dist/pico-shogi.js"></script>
+  </body>
+</html>

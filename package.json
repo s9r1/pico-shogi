@@ -1,0 +1,39 @@
+{
+  "name": "pico-shogi",
+  "version": "0.1.0",
+  "description": "Markdownブログに埋め込める軽量な将棋盤・棋譜表示 Web Component",
+  "type": "module",
+  "main": "./dist/pico-shogi.js",
+  "module": "./dist/pico-shogi.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/pico-shogi.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "shogi",
+    "web-component",
+    "kifu",
+    "sfen",
+    "usi"
+  ],
+  "dependencies": {
+    "tsshogi": "^1.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vite": "^6.0.0",
+    "vitest": "^2.1.0"
+  }
+}
