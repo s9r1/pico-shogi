@@ -71,11 +71,13 @@ function copyHand(counts: readonly { type: HandCount["type"]; count: number }[])
 
 /**
  * Record を指定手数に移動し、その局面の表示用スナップショットを返す。
- * ply が範囲外（負値含む）の場合は 0〜maxPly にクランプする（-1 は最終局面）。
+ * 負値は末尾からの相対指定（-1=最終手, -2=その1手前 …）。
+ * 解決後の手数は 0〜maxPly にクランプする。
  */
 export function readState(record: Record, ply: number): BoardState {
   const maxPly = record.length;
-  const target = ply < 0 ? maxPly : Math.min(Math.max(ply, 0), maxPly);
+  const resolved = ply < 0 ? maxPly + 1 + ply : ply;
+  const target = Math.min(Math.max(resolved, 0), maxPly);
   record.goto(target);
 
   const pos = record.position;

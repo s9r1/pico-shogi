@@ -10,13 +10,13 @@ const DEFAULT_AUTOPLAY_MS = 1000;
  *
  * 属性:
  *  - kif:      SFEN 局面 または USI 指し手列（必須）
- *  - teban:    "sente" | "gote"（盤の向き。既定 sente）
- *  - ply:      初期表示手数。-1 で最終局面（既定 0）
- *  - slider:   属性が在れば再生ボタン・スライダー・手数カウンターを表示
+ *  - teban:     "sente" | "gote"（盤の向き。既定 sente）
+ *  - nanteme:   初期表示手数。負値は末尾からの相対（-1=最終手, -2=その1手前 …）（既定 0）
+ *  - no-slider: 属性が在れば再生ボタン・スライダー・手数カウンターを隠す（既定は表示）
  */
 export class ShogiBoardElement extends HTMLElement {
   static get observedAttributes(): string[] {
-    return ["kif", "teban", "ply", "slider"];
+    return ["kif", "teban", "nanteme", "no-slider"];
   }
 
   private shadow: ShadowRoot;
@@ -44,14 +44,14 @@ export class ShogiBoardElement extends HTMLElement {
     if (!this.isConnected) return;
     switch (name) {
       case "kif":
-      case "slider":
+      case "no-slider":
         // 入力や構造（操作行の有無）が変わるので作り直す。
         this.rebuild();
         break;
       case "teban":
         this.view?.setViewpoint(this.viewpoint());
         break;
-      case "ply":
+      case "nanteme":
         this.seek(this.initialPly());
         break;
     }
@@ -64,7 +64,7 @@ export class ShogiBoardElement extends HTMLElement {
   }
 
   private initialPly(): number {
-    const raw = this.getAttribute("ply");
+    const raw = this.getAttribute("nanteme");
     if (raw === null) return 0;
     const n = Number(raw);
     return Number.isFinite(n) ? n : 0;
@@ -96,7 +96,7 @@ export class ShogiBoardElement extends HTMLElement {
       },
       {
         viewpoint: this.viewpoint(),
-        showSlider: this.hasAttribute("slider"),
+        showSlider: !this.hasAttribute("no-slider"),
       },
     );
     this.shadow.append(this.view.styleEl, this.view.root);

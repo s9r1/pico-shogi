@@ -27,22 +27,23 @@
     <p>
       <code>&lt;shogi-board&gt;</code> に <code>kif</code> 属性で SFEN 局面か USI
       指し手列を渡すだけ。盤の左右クリックで1手進む/戻る、▲△クリックで盤反転。
-      <code>slider</code> を付けると再生ボタン・スライダー・手数カウンターが出る。
+      再生ボタン・スライダー・手数カウンターは既定で表示され、<code>no-slider</code>
+      を付けると隠せる。
     </p>
 
     <section>
-      <h2>SFEN 局面（初期局面）</h2>
+      <h2>SFEN 局面（初期局面・no-slider で操作 UI 非表示）</h2>
       <shogi-board
         kif="lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"
+        no-slider
       ></shogi-board>
     </section>
 
     <section>
-      <h2>USI 棋譜・最終局面表示・スライダーあり</h2>
+      <h2>USI 棋譜・最終局面表示</h2>
       <shogi-board
         kif="startpos moves 7g7f 3c3d 2g2f 8c8d 2f2e 8d8e 2e2d 2c2d 2h2d"
-        ply="-1"
-        slider
+        nanteme="-1"
       ></shogi-board>
     </section>
 
@@ -51,8 +52,7 @@
       <shogi-board
         kif="startpos moves 7g7f 3c3d 8h2b+ 3a2b"
         teban="gote"
-        ply="4"
-        slider
+        nanteme="4"
       ></shogi-board>
     </section>
 
@@ -60,7 +60,6 @@
       <h2>スライダー＋再生ボタン（▶ で自動再生）</h2>
       <shogi-board
         kif="startpos moves 7g7f 8c8d 2g2f 8d8e 7i6h 4a3b 2f2e 8e8f 8g8f 8b8f"
-        slider
       ></shogi-board>
     </section>
 
@@ -68,8 +67,7 @@
       <h2>長い棋譜（110手・3桁の手数カウンター確認）</h2>
       <shogi-board
         kif="startpos moves 2g2f 3c3d 7g7f 4c4d 3i4h 9c9d 5i6h 3a3b 4i5h 3b4c 2f2e 2b3c 3g3f 4a3b 8h7g 9d9e 7i7h 8b4b 6h7i 5a6b 8g8f 7a7b 7h8g 7c7d 6i7h 8a7c 7i8h 8c8d 5g5f 4b4a 7g6f 7b8c 8i7g 6a7b 4h5g 5c5d 5g4f 3c4b 5f5e 4d4e 4f4e 5d5e 6f5e 8d8e 7g8e 7c8e 8f8e P*8f 8g9h 4b3c 5e3c+ 2a3c 4e5f 7d7e B*2f B*4d 2f4d 4c4d B*6f B*6d 4g4f 3b4c 7f7e 4c5d 5h4g 9e9f 9g9f 9a9f P*9g N*7f 8h7g P*5e 9g9f 5e5f 4g5f 4d5e L*5i 5e6f 6g6f 6d7e N*6g 7e9c P*7e P*5e 5f5g B*3i 2h1h S*2h P*5c 2h2i 1h5h 8c9d S*7d 6b5c 5g4g N*6b 5h5e 5d5e 5i5e P*5d 5e5d 6b5d P*5g R*2h 6g5e 2h5h+ 4g5f 3i4h+ 9h8i L*7c"
-        ply="-1"
-        slider
+        nanteme="-1"
       ></shogi-board>
     </section>
 

@@ -63,12 +63,14 @@ describe("readState", () => {
     expect(s2.turn).toBe(Color.BLACK);
   });
 
-  it("ply=-1 は最終局面に解決される", () => {
+  it("負値は末尾からの相対指定に解決される（-1=最終手, -2=その1手前）", () => {
     const r = parseKif("startpos moves 7g7f 3c3d 2g2f");
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    const s = readState(r.record, -1);
-    expect(s.ply).toBe(3);
+    expect(readState(r.record, -1).ply).toBe(3); // 最終手
+    expect(readState(r.record, -2).ply).toBe(2);
+    expect(readState(r.record, -3).ply).toBe(1);
+    expect(readState(r.record, -100).ply).toBe(0); // 範囲外は 0 にクランプ
   });
 
   it("駒を取ると持ち駒が増える", () => {
