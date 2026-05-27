@@ -26,6 +26,8 @@ export interface BoardViewOptions {
 /** 段の漢数字（1 段目→9 段目）。 */
 const RANK_KANJI = ["一", "二", "三", "四", "五", "六", "七", "八", "九"];
 
+const SVG_NS = "http://www.w3.org/2000/svg";
+
 /**
  * 盤・持ち駒・手番マーカー・スライダーを描画する。
  * DOM 構造は一度だけ構築し、update() で内容のみ差し替える。
@@ -33,14 +35,17 @@ const RANK_KANJI = ["一", "二", "三", "四", "五", "六", "七", "八", "九
 export class BoardView {
   readonly root: HTMLElement;
   private readonly cells: HTMLElement[] = [];
+  /** 各マスの駒字（SVG text）。字形中心でマス中央に揃えるため SVG で描く。 */
+  private readonly pieceTexts: SVGTextElement[] = [];
   private readonly leftSide: HTMLElement;
   private readonly rightSide: HTMLElement;
-  private readonly leftMarker: HTMLElement;
-  private readonly rightMarker: HTMLElement;
+  private readonly leftMarker: SVGSVGElement;
+  private readonly rightMarker: SVGSVGElement;
   private readonly leftHand: HTMLElement;
   private readonly rightHand: HTMLElement;
-  private readonly fileLabels: HTMLElement[] = [];
-  private readonly rankLabels: HTMLElement[] = [];
+  /** 筋・段ラベルの SVG text（駒と同じく字形中心でマスに揃える）。 */
+  private readonly fileLabels: SVGTextElement[] = [];
+  private readonly rankLabels: SVGTextElement[] = [];
   private slider: HTMLInputElement | null = null;
   private counter: HTMLElement | null = null;
   private counterCur: HTMLElement | null = null;
@@ -73,48 +78,84 @@ export class BoardView {
     this.leftHand.className = "ps-hand";
     this.leftSide.append(this.leftMarker, this.leftHand);
 
-    // --- 盤本体（座標つき小グリッド: 上=筋・右=段） ---
+    // --- 盤本体 ---
+    // 座標ラベル（筋=上端 / 段=右端）を 9x9 マスと同一の grid に入れ、同じトラックを共有させる。
+    // これにより列・行は box モデルやボーダーに関係なく必ずマスと一致する。盤は 10x10 グリッド
+    //（行1=筋・列10=段・残り 9x9=マス）で、セル/ラベル/枠/地色を grid-area で明示配置する。
     const boardArea = doc.createElement("div");
     boardArea.className = "ps-board-area";
 
-    const files = doc.createElement("div");
-    files.className = "ps-files";
-    for (let i = 0; i < 9; i++) {
-      const span = doc.createElement("span");
-      files.appendChild(span);
-      this.fileLabels.push(span);
-    }
-
-    const ranks = doc.createElement("div");
-    ranks.className = "ps-ranks";
-    for (let i = 0; i < 9; i++) {
-      const span = doc.createElement("span");
-      ranks.appendChild(span);
-      this.rankLabels.push(span);
-    }
-
-    const boardInner = doc.createElement("div");
-    boardInner.className = "ps-board-inner";
     const board = doc.createElement("div");
     board.className = "ps-board";
+
+    // 81 マス（行2〜10・列1〜9）。先頭 81 子なので nth-child による右端/下端ボーダー除去が効く。
     for (let i = 0; i < 81; i++) {
       const cell = doc.createElement("div");
       cell.className = "ps-cell";
-      const piece = doc.createElement("span");
-      piece.className = "ps-piece";
-      cell.appendChild(piece);
+      cell.style.gridColumn = String((i % 9) + 1);
+      cell.style.gridRow = String(Math.floor(i / 9) + 2);
+      // 駒字は SVG で描画。viewBox 100x100 の中央 (50,50) に字形中心を合わせる。
+      const svg = doc.createElementNS(SVG_NS, "svg");
+      svg.setAttribute("class", "ps-piece");
+      svg.setAttribute("viewBox", "0 0 100 100");
+      const text = doc.createElementNS(SVG_NS, "text");
+      text.setAttribute("x", "50");
+      text.setAttribute("y", "50");
+      svg.appendChild(text);
+      cell.appendChild(svg);
       this.cells.push(cell);
+      this.pieceTexts.push(text);
       board.appendChild(cell);
     }
+
+    // 9x9 マスの地色（最背面）と枠（前面・クリックは透過）。どちらもマス領域だけを覆う。
+    const bg = doc.createElement("div");
+    bg.className = "ps-board-bg";
+    const frame = doc.createElement("div");
+    frame.className = "ps-frame";
+    board.append(bg, frame);
+
+    // 筋ラベル（行1・列1〜9）／段ラベル（行2〜10・列10）。駒と同じく SVG の字形中心 (50,50)
+    // でマスに重ねる（フォントの字幅・サイドベアリングに依存せず列/行中央に揃う）。
+    for (let i = 0; i < 9; i++) {
+      const svg = doc.createElementNS(SVG_NS, "svg");
+      svg.setAttribute("class", "ps-file");
+      svg.setAttribute("viewBox", "0 0 100 100");
+      svg.style.gridRow = "1";
+      svg.style.gridColumn = String(i + 1);
+      const text = doc.createElementNS(SVG_NS, "text");
+      text.setAttribute("x", "50");
+      text.setAttribute("y", "50");
+      svg.appendChild(text);
+      board.appendChild(svg);
+      this.fileLabels.push(text);
+    }
+    for (let i = 0; i < 9; i++) {
+      const svg = doc.createElementNS(SVG_NS, "svg");
+      svg.setAttribute("class", "ps-rank");
+      svg.setAttribute("viewBox", "0 0 100 100");
+      svg.style.gridRow = String(i + 2);
+      svg.style.gridColumn = "10";
+      const text = doc.createElementNS(SVG_NS, "text");
+      text.setAttribute("x", "50");
+      text.setAttribute("y", "50");
+      svg.appendChild(text);
+      board.appendChild(svg);
+      this.rankLabels.push(text);
+    }
+
+    // 前後手移動のクリック層は 9x9 マス領域だけに重ねる grid アイテム（ラベル上では発火しない）。
     const prev = doc.createElement("div");
     prev.className = "ps-click ps-click-prev";
+    prev.style.gridArea = "2 / 1 / 11 / 6";
     prev.addEventListener("click", () => this.cb.onPrev());
     const next = doc.createElement("div");
     next.className = "ps-click ps-click-next";
+    next.style.gridArea = "2 / 6 / 11 / 10";
     next.addEventListener("click", () => this.cb.onNext());
-    boardInner.append(board, prev, next);
+    board.append(prev, next);
 
-    boardArea.append(files, ranks, boardInner);
+    boardArea.append(board);
 
     // --- 右カラム（盤の手前側プレイヤー）: 持ち駒上・マーカー下 ---
     this.rightSide = doc.createElement("div");
@@ -170,11 +211,17 @@ export class BoardView {
   /** Shadow DOM へ流し込む <style> 要素。 */
   readonly styleEl: HTMLStyleElement;
 
-  private createMarker(doc: Document): HTMLElement {
-    const el = doc.createElement("div");
-    el.className = "ps-marker";
-    el.addEventListener("click", () => this.cb.onRotate());
-    return el;
+  private createMarker(doc: Document): SVGSVGElement {
+    // ▲/△ も SVG の字形中心で描き、持ち駒「なし」と同じ縦中心線に揃える。
+    const svg = doc.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("class", "ps-marker");
+    svg.setAttribute("viewBox", "0 0 100 100");
+    const text = doc.createElementNS(SVG_NS, "text");
+    text.setAttribute("x", "50");
+    text.setAttribute("y", "50");
+    svg.appendChild(text);
+    svg.addEventListener("click", () => this.cb.onRotate());
+    return svg;
   }
 
   setViewpoint(v: Viewpoint): void {
@@ -215,16 +262,18 @@ export class BoardView {
     for (let d = 0; d < 81; d++) {
       const sqIndex = senteView ? d : 80 - d;
       const cellEl = this.cells[d];
-      const pieceEl = cellEl.firstElementChild as HTMLElement;
+      const textEl = this.pieceTexts[d];
+      // 回転・成り表示は駒字を内包する <svg> に当てる（回転は字形中心まわりで対称）。
+      const svgEl = textEl.parentElement as unknown as SVGElement;
       const cell = state.cells[sqIndex];
       if (cell) {
-        pieceEl.textContent = pieceChar(cell.type);
-        pieceEl.classList.toggle("is-flipped", cell.color !== bottomColor);
-        pieceEl.classList.toggle("is-promoted", isPromoted(cell.type));
+        textEl.textContent = pieceChar(cell.type);
+        svgEl.classList.toggle("is-flipped", cell.color !== bottomColor);
+        svgEl.classList.toggle("is-promoted", isPromoted(cell.type));
       } else {
-        pieceEl.textContent = "";
-        pieceEl.classList.remove("is-flipped");
-        pieceEl.classList.remove("is-promoted");
+        textEl.textContent = "";
+        svgEl.classList.remove("is-flipped");
+        svgEl.classList.remove("is-promoted");
       }
       cellEl.classList.toggle("is-last", state.lastTo === sqIndex);
     }
@@ -259,30 +308,48 @@ export class BoardView {
     return color === Color.BLACK ? state.blackHand : state.whiteHand;
   }
 
-  private renderMarker(el: HTMLElement, color: Color): void {
-    el.textContent = color === Color.BLACK ? "▲" : "△";
+  private renderMarker(el: Element, color: Color): void {
+    const text = el.firstElementChild;
+    if (text) text.textContent = color === Color.BLACK ? "▲" : "△";
   }
 
   private renderHand(container: HTMLElement, hand: HandCount[]): void {
     const byType = new Map(hand.map((h) => [h.type, h.count]));
-    const items: string[] = [];
+    container.textContent = "";
+
+    // 1 マスぶんの正方箱に駒字を 1 字ずつ。駒も「なし」も同じ箱サイズなので縦間隔が揃う。
+    const entries: { ch: string; n: number; cls: string }[] = [];
     for (const type of HAND_ORDER) {
       const n = byType.get(type) ?? 0;
-      if (n > 0) items.push(pieceChar(type) + (n > 1 ? String(n) : ""));
+      if (n > 0) entries.push({ ch: pieceChar(type), n, cls: "ps-hand-item" });
     }
-    container.textContent = "";
-    if (items.length === 0) {
-      const empty = container.ownerDocument.createElement("span");
-      empty.className = "ps-hand-empty";
-      empty.textContent = "なし";
-      container.appendChild(empty);
-      return;
+    if (entries.length === 0) {
+      entries.push({ ch: "な", n: 0, cls: "ps-hand-empty" });
+      entries.push({ ch: "し", n: 0, cls: "ps-hand-empty" });
     }
-    for (const text of items) {
-      const span = container.ownerDocument.createElement("span");
-      span.className = "ps-hand-item";
-      span.textContent = text;
-      container.appendChild(span);
+
+    const doc = container.ownerDocument;
+    for (const { ch, n, cls } of entries) {
+      const svg = doc.createElementNS(SVG_NS, "svg");
+      svg.setAttribute("class", cls);
+      svg.setAttribute("viewBox", "0 0 100 100");
+      // 駒字は字形中心 (50,50) に固定 → ▲/△ や他の駒と縦中心線が揃う。
+      const text = doc.createElementNS(SVG_NS, "text");
+      text.setAttribute("class", "ps-hand-char");
+      text.setAttribute("x", "50");
+      text.setAttribute("y", "50");
+      text.textContent = ch;
+      svg.appendChild(text);
+      // 枚数は駒字を動かさないよう右脇に小さく添える（2 枚以上のとき）。
+      if (n > 1) {
+        const num = doc.createElementNS(SVG_NS, "text");
+        num.setAttribute("class", "ps-hand-num");
+        num.setAttribute("x", "102");
+        num.setAttribute("y", "74");
+        num.textContent = String(n);
+        svg.appendChild(num);
+      }
+      container.appendChild(svg);
     }
   }
 }
