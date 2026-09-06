@@ -1,6 +1,6 @@
 {
   "name": "pico-shogi",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Markdownブログに埋め込める軽量な将棋盤・棋譜表示 Web Component",
   "type": "module",
   "main": "./dist/pico-shogi.js",

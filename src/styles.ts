@@ -144,7 +144,7 @@ export const STYLE = /* css */ `
   fill: var(--ps-text);
 }
 .ps-hand-empty .ps-hand-char {
-  fill: #aaa;
+  fill: var(--ps-coord);
 }
 .ps-hand-num {
   font-size: 42px;

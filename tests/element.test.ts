@@ -63,11 +63,25 @@ describe("ShogiBoardElement", () => {
     expect(shadow(el2).querySelector(".ps-controls")).not.toBeNull();
   });
 
-  it("nanteme=-1 で最終手が初期表示される", () => {
+  it("start=-1 で最終手が初期表示される", () => {
     const el = mount(
-      `<shogi-board kif="startpos moves 7g7f 3c3d 2g2f" nanteme="-1"></shogi-board>`,
+      `<shogi-board kif="startpos moves 7g7f 3c3d 2g2f" start="-1"></shogi-board>`,
     );
     expect(shadow(el).querySelector(".ps-counter-cur")?.textContent).toBe("3");
+  });
+
+  it("reverse で後手視点になり、マーカークリックで reverse 属性がトグルされる", () => {
+    const el = mount(`<shogi-board kif="${STANDARD_SFEN}" reverse></shogi-board>`);
+    // 後手視点では筋ラベルが左から 1..9 になる。
+    const firstFile = shadow(el).querySelector(".ps-file text")?.textContent;
+    expect(firstFile).toBe("1");
+
+    (shadow(el).querySelector(".ps-marker") as HTMLElement).click();
+    expect(el.hasAttribute("reverse")).toBe(false);
+    expect(shadow(el).querySelector(".ps-file text")?.textContent).toBe("9");
+
+    (shadow(el).querySelector(".ps-marker") as HTMLElement).click();
+    expect(el.hasAttribute("reverse")).toBe(true);
   });
 
   it("盤の右半分クリックで 1 手進む", () => {

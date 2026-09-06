@@ -11,13 +11,13 @@ const DEFAULT_AUTOPLAY_MS = 1000;
  *
  * 属性:
  *  - kif:      SFEN 局面 または USI 指し手列（必須）
- *  - teban:     "sente" | "gote"（盤の向き。既定 sente）
- *  - nanteme:   初期表示手数。負値は末尾からの相対（-1=最終手, -2=その1手前 …）（既定 0）
+ *  - reverse:   属性が在れば盤を反転して後手視点で表示（既定は先手視点）
+ *  - start:     初期表示手数。負値は末尾からの相対（-1=最終手, -2=その1手前 …）（既定 0）
  *  - no-slider: 属性が在れば再生ボタン・スライダー・手数カウンターを隠す（既定は表示）
  */
 export class ShogiBoardElement extends HTMLElement {
   static get observedAttributes(): string[] {
-    return ["kif", "teban", "nanteme", "no-slider"];
+    return ["kif", "reverse", "start", "no-slider"];
   }
 
   private shadow: ShadowRoot;
@@ -60,10 +60,10 @@ export class ShogiBoardElement extends HTMLElement {
         // 入力や構造（操作行の有無）が変わるので作り直す。
         this.rebuild();
         break;
-      case "teban":
+      case "reverse":
         this.view?.setViewpoint(this.viewpoint());
         break;
-      case "nanteme":
+      case "start":
         this.seek(this.initialPly());
         break;
     }
@@ -74,8 +74,8 @@ export class ShogiBoardElement extends HTMLElement {
   private attrSignature(): string {
     return JSON.stringify([
       this.getAttribute("kif"),
-      this.getAttribute("teban"),
-      this.getAttribute("nanteme"),
+      this.hasAttribute("reverse"),
+      this.getAttribute("start"),
       this.hasAttribute("no-slider"),
     ]);
   }
@@ -83,11 +83,11 @@ export class ShogiBoardElement extends HTMLElement {
   // --- 属性の読み取り ---
 
   private viewpoint(): Viewpoint {
-    return this.getAttribute("teban") === "gote" ? "gote" : "sente";
+    return this.hasAttribute("reverse") ? "gote" : "sente";
   }
 
   private initialPly(): number {
-    const raw = this.getAttribute("nanteme");
+    const raw = this.getAttribute("start");
     if (raw === null) return 0;
     const n = Number(raw);
     return Number.isFinite(n) ? n : 0;
@@ -152,8 +152,10 @@ export class ShogiBoardElement extends HTMLElement {
 
   private toggleViewpoint(): void {
     const next: Viewpoint = this.viewpoint() === "sente" ? "gote" : "sente";
+    // 視点は boolean 属性 reverse に反映する（在れば後手視点）。
     this.reflecting = true;
-    this.setAttribute("teban", next);
+    if (next === "gote") this.setAttribute("reverse", "");
+    else this.removeAttribute("reverse");
     this.reflecting = false;
     this.view?.setViewpoint(next);
   }

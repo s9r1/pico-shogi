@@ -5,7 +5,7 @@ Markdown ブログに埋め込める軽量な将棋盤・棋譜表示 Web Compon
 ## 構成
 
 - `src/index.ts` — エントリ。`ShogiBoardElement` を `customElements` に自動登録。`defineShogiBoard(tagName?, registry?)` は任意タグ名・別レジストリ（popout ウィンドウ等）にも登録できる（2 つ目以降のタグ名はサブクラスを define する — 同一クラスは 1 レジストリ 1 回制限のため）。
-- `src/shogi-board-element.ts` — Web Component 本体。属性（kif/teban/nanteme/no-slider）の監視、Shadow DOM 管理、手数・視点・自動再生の状態を持ち、BoardView を駆動。
+- `src/shogi-board-element.ts` — Web Component 本体。属性（kif/reverse/start/no-slider）の監視、Shadow DOM 管理、手数・視点・自動再生の状態を持ち、BoardView を駆動。
 - `src/board-view.ts` — Shadow DOM 内の DOM 構築と描画。盤・持ち駒・スライダーを生成し、クリック/シーク/再生のコールバックを発火。
 - `src/parser.ts` — tsshogi で `kif` をパースし `Record` 化（`parseKif`）。各手数の盤面を描画用 `BoardState` に変換（`readState`）。
 - `src/piece-char.ts` — 駒種 → 漢字一字（成駒含む）、成判定・持ち駒並び順。

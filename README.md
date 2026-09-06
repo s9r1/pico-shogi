@@ -9,7 +9,7 @@ Markdown ブログ記事に埋め込める、軽量な将棋盤・棋譜表示 W
 - ライト／ダークテーマ対応（ページの `color-scheme` に追従。`light-dark()` 対応ブラウザのみ）
 - 任意でスライダー（再生ボタン・手数カウンター付き）
 - 直前手のハイライト・成り駒の赤表示
-- 駒は将棋本ふうの「マス目の中に漢字一字」表示
+- 駒は将棋本ふうの「マス目の中に漢字一字」表示（SVG テキスト描画で字形中心をマス中央に揃える）
 - 棋譜パースは [tsshogi](https://github.com/sunfish-shogi/tsshogi) を利用
 
 ## 使い方
@@ -25,7 +25,10 @@ Markdown ブログ記事に埋め込める、軽量な将棋盤・棋譜表示 W
 ></shogi-board>
 
 <!-- USI 棋譜・最終局面（スライダーは既定で表示） -->
-<shogi-board kif="startpos moves 7g7f 3c3d 2g2f" nanteme="-1"></shogi-board>
+<shogi-board kif="startpos moves 7g7f 3c3d 2g2f" start="-1"></shogi-board>
+
+<!-- 後手視点（盤を反転） -->
+<shogi-board kif="startpos moves 7g7f 3c3d 2g2f" reverse></shogi-board>
 
 <!-- スライダー等の操作 UI を隠す -->
 <shogi-board kif="startpos moves 7g7f 3c3d 2g2f" no-slider></shogi-board>
@@ -45,8 +48,8 @@ defineShogiBoard("my-shogi"); // <my-shogi kif="..."> としても使える
 | 属性        | 値                    | 既定    | 説明                                                  |
 | ----------- | --------------------- | ------- | ----------------------------------------------------- |
 | `kif`       | 文字列（必須）        | —       | SFEN 局面 または USI 指し手列                          |
-| `teban`     | `sente` \| `gote`     | `sente` | 盤の向き（`gote` で後手視点）                          |
-| `nanteme`   | 整数                  | `0`     | 初期表示手数（何手目）。負値は末尾からの相対（`-1`=最終手, `-2`=その1手前 …） |
+| `reverse`   | 属性の有無            | なし    | 付けると盤を反転して後手視点で表示（既定は先手視点）   |
+| `start`     | 整数                  | `0`     | 初期表示手数（何手目）。負値は末尾からの相対（`-1`=最終手, `-2`=その1手前 …） |
 | `no-slider` | 属性の有無            | なし    | 付けると再生ボタン・スライダー・手数カウンターを隠す（既定は表示） |
 
 `kif` が不正な場合は盤を表示せず、枠内にエラーメッセージを出します（ページは壊れません）。
@@ -71,6 +74,7 @@ shogi-board {
   --ps-cell-size: 36px; /* マスの大きさ */
   --ps-board-bg: #f3d9a4; /* 盤の色 */
   --ps-line: #6b5b3e; /* 罫線の色 */
+  --ps-text: #1a1a1a; /* 駒字・マーカー・カウンター現在値の色 */
   --ps-accent: #8b2a1f; /* スライダーのアクセント色 */
   --ps-highlight: rgba(0, 0, 0, 0.12); /* 最終手ハイライト（グレー） */
   --ps-promoted: #c0392b; /* 成り駒の文字色（赤） */
@@ -87,6 +91,8 @@ pnpm test     # vitest（パーサ + Web Component のユニットテスト）
 pnpm build    # 型チェック + dist/pico-shogi.js（IIFE）・pico-shogi.mjs（ESM）・型定義を生成
 ```
 
-## 非対応（後回し）
+## TODO（未対応）
 
-合法手判定 / 対局 / 棋譜編集 / 分岐 / コメント / 評価値 / KIF・KI2・CSA 入力 / SVG 駒。
+- [ ] KIF・KI2・CSA 形式の入力
+- [ ] 分岐・コメント・評価値の表示
+- [ ] 合法手判定 / 対局 / 棋譜編集
