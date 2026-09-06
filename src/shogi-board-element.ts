@@ -1,6 +1,7 @@
 import type { Record } from "tsshogi";
 import { BoardView } from "./board-view";
 import { parseKif, readState } from "./parser";
+import { STYLE } from "./styles";
 import type { Viewpoint } from "./types";
 
 const DEFAULT_AUTOPLAY_MS = 1000;
@@ -25,6 +26,9 @@ export class ShogiBoardElement extends HTMLElement {
   private currentPly = 0;
   private autoplayTimer: ReturnType<typeof setInterval> | null = null;
   private reflecting = false;
+  private connectedOnce = false;
+  /** 最後に表示へ反映した属性一式（再接続時の rebuild 要否判定用）。 */
+  private builtFor: string | null = null;
 
   constructor() {
     super();
@@ -32,6 +36,9 @@ export class ShogiBoardElement extends HTMLElement {
   }
 
   connectedCallback(): void {
+    this.connectedOnce = true;
+    // 属性が変わらないままの再接続（DOM 移動など）は現在の表示・手数を維持する。
+    if (this.view && this.builtFor === this.attrSignature()) return;
     this.rebuild();
   }
 
@@ -40,8 +47,13 @@ export class ShogiBoardElement extends HTMLElement {
   }
 
   attributeChangedCallback(name: string): void {
-    if (this.reflecting) return;
-    if (!this.isConnected) return;
+    if (this.reflecting) {
+      this.builtFor = this.attrSignature();
+      return;
+    }
+    // アップグレード時は attributeChangedCallback → connectedCallback の順で呼ばれる。
+    // 初回の構築は connectedCallback の rebuild に任せ、二重構築を避ける。
+    if (!this.connectedOnce || !this.isConnected) return;
     switch (name) {
       case "kif":
       case "no-slider":
@@ -55,6 +67,17 @@ export class ShogiBoardElement extends HTMLElement {
         this.seek(this.initialPly());
         break;
     }
+    this.builtFor = this.attrSignature();
+  }
+
+  /** 観測対象の属性ぜんぶを 1 つの文字列に畳む（比較専用）。 */
+  private attrSignature(): string {
+    return JSON.stringify([
+      this.getAttribute("kif"),
+      this.getAttribute("teban"),
+      this.getAttribute("nanteme"),
+      this.hasAttribute("no-slider"),
+    ]);
   }
 
   // --- 属性の読み取り ---
@@ -80,6 +103,8 @@ export class ShogiBoardElement extends HTMLElement {
     const kif = this.getAttribute("kif") ?? "";
     const result = parseKif(kif);
     if (!result.ok) {
+      this.record = null;
+      this.builtFor = this.attrSignature();
       this.renderError(result.error);
       return;
     }
@@ -105,6 +130,7 @@ export class ShogiBoardElement extends HTMLElement {
     const state = readState(this.record, this.initialPly());
     this.currentPly = state.ply;
     this.view.update(state);
+    this.builtFor = this.attrSignature();
   }
 
   private renderError(message: string): void {
@@ -112,8 +138,7 @@ export class ShogiBoardElement extends HTMLElement {
     div.className = "ps-error";
     div.textContent = `[pico-shogi] ${message}`;
     const style = this.ownerDocument.createElement("style");
-    style.textContent =
-      ".ps-error{padding:8px 12px;border:1px solid #d99;background:#fdecec;color:#a33;font-family:sans-serif;font-size:13px;border-radius:4px}";
+    style.textContent = STYLE;
     this.shadow.append(style, div);
   }
 

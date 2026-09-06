@@ -2,12 +2,13 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   build: {
-    // 単一バンドルJS。<script> で読み込むだけで <shogi-board> が使えるようにする。
+    // iife: <script> で読み込むだけで <shogi-board> が使える単一バンドル。
+    // es:   バンドラ経由の import 用（package.json の exports.import が指す）。
     lib: {
       entry: "src/index.ts",
       name: "PicoShogi",
-      formats: ["iife"],
-      fileName: () => "pico-shogi.js",
+      formats: ["es", "iife"],
+      fileName: (format) => (format === "es" ? "pico-shogi.mjs" : "pico-shogi.js"),
     },
     // tsshogi はバンドルに同梱する（外部依存にしない）。
     rollupOptions: {},

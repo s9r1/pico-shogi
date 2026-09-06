@@ -16,6 +16,14 @@ export const STYLE = /* css */ `
   --ps-promoted: #c0392b;
   --ps-marker: #555;
   --ps-coord: #999;
+  /* 内部用（非公開・上書きは想定しない）。ライト既定値。 */
+  --ps-hover-bg: rgba(0, 0, 0, 0.07);
+  --ps-btn-border: rgba(26, 20, 16, 0.18);
+  --ps-track: rgba(0, 0, 0, 0.18);
+  --ps-thumb-border: #fffdf5;
+  --ps-error-bg: #fdecec;
+  --ps-error-border: #d99;
+  --ps-error-text: #a33;
 
   display: inline-block;
   font-family: "Hiragino Mincho ProN", "Yu Mincho", "MS Mincho", serif;
@@ -23,6 +31,28 @@ export const STYLE = /* css */ `
   line-height: 1;
   -webkit-user-select: none;
   user-select: none;
+}
+
+/* ダークテーマ対応: ページから継承した color-scheme が dark のとき、読める既定色に
+   切り替える（利用側の変数上書きは通常どおりこれらより優先される）。
+   light-dark() 非対応の古いブラウザは上のライト既定値のまま。 */
+@supports (color: light-dark(#000, #fff)) {
+  :host {
+    --ps-line: light-dark(#6b5b3e, #8a7a58);
+    --ps-text: light-dark(#1a1a1a, #e8e5de);
+    --ps-accent: light-dark(#8b2a1f, #cd6f61);
+    --ps-highlight: light-dark(rgba(0, 0, 0, 0.12), rgba(255, 255, 255, 0.16));
+    --ps-promoted: light-dark(#c0392b, #e2837a);
+    --ps-marker: light-dark(#555, #b3afa6);
+    --ps-coord: light-dark(#999, #8f8b83);
+    --ps-hover-bg: light-dark(rgba(0, 0, 0, 0.07), rgba(255, 255, 255, 0.1));
+    --ps-btn-border: light-dark(rgba(26, 20, 16, 0.18), rgba(255, 253, 245, 0.25));
+    --ps-track: light-dark(rgba(0, 0, 0, 0.18), rgba(255, 255, 255, 0.22));
+    --ps-thumb-border: light-dark(#fffdf5, #3a352e);
+    --ps-error-bg: light-dark(#fdecec, #3a2020);
+    --ps-error-border: light-dark(#d99, #7a4a4a);
+    --ps-error-text: light-dark(#a33, #e09a9a);
+  }
 }
 
 * { box-sizing: border-box; }
@@ -62,14 +92,25 @@ export const STYLE = /* css */ `
 .ps-side-left .ps-marker { margin-top: calc(var(--ps-cell-size) * 0.5); }
 .ps-side-right .ps-marker { margin-bottom: 0; }
 
-/* ▲ / △ 先手・後手マーカー（クリックで盤反転）。手番では色を変えない。 */
+/* ▲ / △ 先手・後手マーカー（クリックで盤反転）。手番では色を変えない。
+   キーボード操作できるよう button（見た目は無装飾）にしている。 */
 .ps-marker {
   cursor: pointer;
   display: block;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
   width: calc(var(--ps-cell-size) * 0.7);
   height: calc(var(--ps-cell-size) * 0.7);
   border-radius: 4px;
   transition: background-color 0.15s;
+}
+.ps-marker svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 .ps-marker text {
   font-size: 90px;
@@ -77,7 +118,7 @@ export const STYLE = /* css */ `
   dominant-baseline: central;
   fill: var(--ps-text);
 }
-.ps-marker:hover { background: rgba(0, 0, 0, 0.07); }
+.ps-marker:hover { background: var(--ps-hover-bg); }
 
 /* 持ち駒リスト（マーカーの上下に縦並び） */
 .ps-hand {
@@ -221,7 +262,7 @@ export const STYLE = /* css */ `
   width: clamp(22px, calc(var(--ps-cell-size) * 0.85), 30px);
   height: clamp(22px, calc(var(--ps-cell-size) * 0.85), 30px);
   padding: 0;
-  border: 1px solid rgba(26, 20, 16, 0.18);
+  border: 1px solid var(--ps-btn-border);
   background: transparent;
   color: var(--ps-text);
   cursor: pointer;
@@ -230,7 +271,7 @@ export const STYLE = /* css */ `
   justify-content: center;
   font-size: clamp(10px, calc(var(--ps-cell-size) * 0.34), 12px);
 }
-.ps-play:hover { background: rgba(0, 0, 0, 0.05); }
+.ps-play:hover { background: var(--ps-hover-bg); }
 
 /* テーマ付きネイティブ range（参照 shogi-blog の .ms-input を移植） */
 .ps-slider {
@@ -250,13 +291,13 @@ export const STYLE = /* css */ `
   background: linear-gradient(
     to right,
     var(--ps-accent) 0 var(--p, 0%),
-    rgba(0, 0, 0, 0.18) var(--p, 0%) 100%
+    var(--ps-track) var(--p, 0%) 100%
   );
   border-radius: 1.5px;
 }
 .ps-slider::-moz-range-track {
   height: 3px;
-  background: rgba(0, 0, 0, 0.18);
+  background: var(--ps-track);
   border-radius: 1.5px;
 }
 .ps-slider::-moz-range-progress {
@@ -271,7 +312,7 @@ export const STYLE = /* css */ `
   height: var(--thumb);
   border-radius: 50%;
   background: var(--ps-accent);
-  border: 2.5px solid #fffdf5;
+  border: 2.5px solid var(--ps-thumb-border);
   /* 3px のトラック中心につまみを合わせる */
   margin-top: calc((3px - var(--thumb)) / 2);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
@@ -282,11 +323,16 @@ export const STYLE = /* css */ `
   height: var(--thumb);
   border-radius: 50%;
   background: var(--ps-accent);
-  border: 2.5px solid #fffdf5;
+  border: 2.5px solid var(--ps-thumb-border);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   cursor: pointer;
 }
+/* マウス操作時の枠は消すが、キーボードフォーカスは可視のまま残す */
 .ps-slider:focus { outline: none; }
+.ps-slider:focus-visible {
+  outline: 2px solid var(--ps-accent);
+  outline-offset: 2px;
+}
 
 /* 手数カウンター（N / 総数 手目） */
 .ps-counter {
@@ -313,9 +359,9 @@ export const STYLE = /* css */ `
 
 .ps-error {
   padding: 8px 12px;
-  border: 1px solid #d99;
-  background: #fdecec;
-  color: #a33;
+  border: 1px solid var(--ps-error-border);
+  background: var(--ps-error-bg);
+  color: var(--ps-error-text);
   font-family: sans-serif;
   font-size: 13px;
   border-radius: 4px;

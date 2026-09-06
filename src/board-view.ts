@@ -39,8 +39,8 @@ export class BoardView {
   private readonly pieceTexts: SVGTextElement[] = [];
   private readonly leftSide: HTMLElement;
   private readonly rightSide: HTMLElement;
-  private readonly leftMarker: SVGSVGElement;
-  private readonly rightMarker: SVGSVGElement;
+  private readonly leftMarker: HTMLButtonElement;
+  private readonly rightMarker: HTMLButtonElement;
   private readonly leftHand: HTMLElement;
   private readonly rightHand: HTMLElement;
   /** 筋・段ラベルの SVG text（駒と同じく字形中心でマスに揃える）。 */
@@ -183,6 +183,7 @@ export class BoardView {
       this.slider = doc.createElement("input");
       this.slider.type = "range";
       this.slider.className = "ps-slider";
+      this.slider.setAttribute("aria-label", "手数");
       this.slider.min = "0";
       this.slider.value = "0";
       this.slider.addEventListener("input", () => {
@@ -211,17 +212,22 @@ export class BoardView {
   /** Shadow DOM へ流し込む <style> 要素。 */
   readonly styleEl: HTMLStyleElement;
 
-  private createMarker(doc: Document): SVGSVGElement {
+  private createMarker(doc: Document): HTMLButtonElement {
     // ▲/△ も SVG の字形中心で描き、持ち駒「なし」と同じ縦中心線に揃える。
+    // キーボードでも視点反転できるよう button で包む。
+    const btn = doc.createElement("button");
+    btn.type = "button";
+    btn.className = "ps-marker";
+    btn.setAttribute("aria-label", "盤の向きを反転");
     const svg = doc.createElementNS(SVG_NS, "svg");
-    svg.setAttribute("class", "ps-marker");
     svg.setAttribute("viewBox", "0 0 100 100");
     const text = doc.createElementNS(SVG_NS, "text");
     text.setAttribute("x", "50");
     text.setAttribute("y", "50");
     svg.appendChild(text);
-    svg.addEventListener("click", () => this.cb.onRotate());
-    return svg;
+    btn.appendChild(svg);
+    btn.addEventListener("click", () => this.cb.onRotate());
+    return btn;
   }
 
   setViewpoint(v: Viewpoint): void {
@@ -308,8 +314,8 @@ export class BoardView {
     return color === Color.BLACK ? state.blackHand : state.whiteHand;
   }
 
-  private renderMarker(el: Element, color: Color): void {
-    const text = el.firstElementChild;
+  private renderMarker(el: HTMLElement, color: Color): void {
+    const text = el.querySelector("text");
     if (text) text.textContent = color === Color.BLACK ? "▲" : "△";
   }
 

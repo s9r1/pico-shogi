@@ -6,6 +6,7 @@ Markdown ブログ記事に埋め込める、軽量な将棋盤・棋譜表示 W
 - SFEN（局面）／ USI（指し手列）に対応
 - 盤の左右クリックで 1 手進む／戻る
 - ▲ ／ △ クリックで盤を反転（先手視点 ⇄ 後手視点）
+- ライト／ダークテーマ対応（ページの `color-scheme` に追従。`light-dark()` 対応ブラウザのみ）
 - 任意でスライダー（再生ボタン・手数カウンター付き）
 - 直前手のハイライト・成り駒の赤表示
 - 駒は将棋本ふうの「マス目の中に漢字一字」表示
@@ -30,6 +31,15 @@ Markdown ブログ記事に埋め込める、軽量な将棋盤・棋譜表示 W
 <shogi-board kif="startpos moves 7g7f 3c3d 2g2f" no-slider></shogi-board>
 ```
 
+バンドラ経由（ESM）で使う場合は `dist/pico-shogi.mjs`（`exports.import`）を import します。
+読み込むだけで `<shogi-board>` が自動登録されるほか、`defineShogiBoard(tagName?, registry?)`
+で任意のタグ名・別ウィンドウの `CustomElementRegistry` にも登録できます。
+
+```ts
+import { defineShogiBoard } from "pico-shogi";
+defineShogiBoard("my-shogi"); // <my-shogi kif="..."> としても使える
+```
+
 ## 属性
 
 | 属性        | 値                    | 既定    | 説明                                                  |
@@ -50,6 +60,10 @@ Markdown ブログ記事に埋め込める、軽量な将棋盤・棋譜表示 W
 
 ## 見た目のカスタマイズ
 
+既定色はページの `color-scheme`（light / dark）に追従します。ダーク背景のページで
+`color-scheme` を宣言していない場合はライト用の色になるので、ページ側で
+`:root { color-scheme: dark; }` を宣言するか、下記の変数を上書きしてください。
+
 CSS カスタムプロパティで調整できます（`::part` ではなく `:host` 変数）。
 
 ```css
@@ -69,8 +83,8 @@ shogi-board {
 ```bash
 pnpm install
 pnpm dev      # 開発サーバ（index.html）
-pnpm test     # vitest（パーサのユニットテスト）
-pnpm build    # 型チェック + 単一バンドル dist/pico-shogi.js を生成
+pnpm test     # vitest（パーサ + Web Component のユニットテスト）
+pnpm build    # 型チェック + dist/pico-shogi.js（IIFE）・pico-shogi.mjs（ESM）・型定義を生成
 ```
 
 ## 非対応（後回し）
